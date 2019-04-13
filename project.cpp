@@ -203,7 +203,7 @@ void encryption(unsigned char* message, unsigned char* key) {
 	addRoundKey(state, key);
 	for (int i = 0; i < ROUND - 1; i++) {
 		subBytes(state);
-		shiftRowS(state);
+		shiftRows(state);
 		mixColumns(state);
 		addRoundKey(state, expandedKey + (16 * (i + 1)));
 	}
@@ -230,7 +230,7 @@ int main( int argc, char *argv[] ) {
     	memcpy( grid[ r ], buffer, cols );
   	}
   	*/
-  	unsigned message[] = "This is a messa!";
+  	unsigned char message[] = "This is a messa!";
   	unsigned char key[16] = {
   		1, 2, 3, 4,
   		5, 6, 7, 8,
