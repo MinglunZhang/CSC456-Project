@@ -287,14 +287,12 @@ void decryption (__global uchar* state, __global uchar* key) {
     addRoundKey(state, expandedKey);
 }
 
-__kernel void encrypt(__global uchar* roundKey, __global uchar* message)
-{
+__kernel void encrypt(__global uchar* message, __global uchar* roundKey) {
   int id = get_global_id(0);
   encryption(message + 16 * id, roundKey);
 }
 
-__kernel void decrypt(__global uchar* roundKey, __global uchar* message)
-{
+__kernel void decrypt(__global uchar* message, __global uchar* roundKey) {
   int id = get_global_id(0);
   encryption(message + 16 * id, roundKey);
 }
