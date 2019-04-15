@@ -1,4 +1,4 @@
-#include "main.h"
+#include "aes.h"
 #ifdef APPLE
 #include <OpenCL/opencl.h>
 #else
@@ -49,7 +49,7 @@ void cleanup();
 /**
  * The fpga encryption function
  */
-int encrption_fpga (int num_of_lines, unsigned char *data, unsigned char *k) {
+int encryption_fpga (int num_of_lines, unsigned char *data, unsigned char *k) {
     // assign global variables   
     mode = "encrypt";
     size = num_of_lines;
@@ -70,7 +70,7 @@ int encrption_fpga (int num_of_lines, unsigned char *data, unsigned char *k) {
 /**
  * The fpga decryption function
  */
-int decrption_fpga (int num_of_lines, unsigned char *data, unsigned char *key) {
+int decryption_fpga (int num_of_lines, unsigned char *data, unsigned char *key) {
     // assign global variables  
     mode = "decrypt";
     size = num_of_lines;

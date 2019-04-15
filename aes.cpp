@@ -12,7 +12,10 @@
  *                https://en.wikipedia.org/wiki/Advanced_Encryption_Standard
  *                http://gauss.ececs.uc.edu/Courses/c6053/extra/AES/mixcolumns.cpp
  */
+#include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
+#include "aes.h"
 // We use round number 10 for AES 128
 #define ROUND 10
 // The bytes of every message
@@ -105,6 +108,7 @@ unsigned char rsbox[256] = {
  */
 void keyExpansionCore (unsigned char* in, unsigned char i) {
     unsigned int* q = (unsigned int*) in;
+    
     *q  = (*q >> 8) | ((*q & 0xff) << 24);
 
     in[0] = sbox[in[0]];
@@ -331,15 +335,57 @@ void decryption (unsigned char* state, unsigned char* key) {
 
 
 int main (int argc, char *argv[]) {
-    unsigned char message[] = "This is a messa!";
-    unsigned char key[MAX_WIDTH] = {1, 2, 3, 4,5, 6, 7, 8,9, 10, 11, 12,13, 14, 15, 16};
-    encryption(message, key);
-    printf("Encryption: \n");
-    for (int i = 0; i < MAX_WIDTH; i++) {
-        printf("%02x ", message[i]);
+    FILE *fp;
+    int mode = 0;
+    int numberOfLines;
+    int size;
+    int num_bytes_read;
+    unsigned char *message;
+    if(argc < 3)
+    {
+        fprintf(stderr,"Usage: %s input_file number_of_lines mode\n",argv[0]);        
     }
-    printf("\nDecryption: \n");
-    decryption(message, key);
-    printf("%s\n", message);
+    numberOfLines = atoi(argv[2]);
+    mode = atoi(argv[3]);
+    fp = fopen(argv[1],"r");
+    if(fp == NULL) {
+        fprintf(stderr,"Cannot open %s\n",argv[1]);
+        exit(EXIT_FAILURE);
+    }
+    size = numberOfLines * sizeof(unsigned char) * 16;
+    message = (unsigned char*)malloc(size);
+    num_bytes_read = fread(message,sizeof(unsigned char),numberOfLines * 16,fp);
+    fclose(fp);
+
+    unsigned char key[MAX_WIDTH] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16};
+    switch(mode){
+        case 0:
+            encryption(message, key);
+            printf("Encryption: \n");
+            for (int i = 0; i < MAX_WIDTH; i++) {
+                printf("%c", message[i]);
+            }
+            break;
+        case 1:
+            printf("\nDecryption: \n");
+            decryption(message, key);
+            printf("%s\n", message);
+            break;
+            
+        case 2:
+            printf("FPGA Encryption: \n");
+            encryption_fpga(numberOfLines, message, key);
+            for (int i = 0; i < MAX_WIDTH; i++) {
+                printf("%02x ", message[i]);
+            }
+            break;
+        default:
+            decryption_fpga(numberOfLines, message, key);
+            printf("\nFPGA Decryption: \n");
+            break;
+            
+    }
     return 0;
+    
+  
 }

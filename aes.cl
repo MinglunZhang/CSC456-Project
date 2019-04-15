@@ -19,7 +19,6 @@ __constant uchar sbox[256] = {
   0xe1, 0xf8, 0x98, 0x11, 0x69, 0xd9, 0x8e, 0x94, 0x9b, 0x1e, 0x87, 0xe9, 0xce, 0x55, 0x28, 0xdf,
   0x8c, 0xa1, 0x89, 0x0d, 0xbf, 0xe6, 0x42, 0x68, 0x41, 0x99, 0x2d, 0x0f, 0xb0, 0x54, 0xbb, 0x16 
   };
-
 __constant uchar Rcon[ROUND + 1] = {0x8d, 0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x1b, 0x36};
 
 __constant uchar mul2[256] = {
@@ -39,8 +38,8 @@ __constant uchar mul2[256] = {
     0xbb,0xb9,0xbf,0xbd,0xb3,0xb1,0xb7,0xb5,0xab,0xa9,0xaf,0xad,0xa3,0xa1,0xa7,0xa5,
     0xdb,0xd9,0xdf,0xdd,0xd3,0xd1,0xd7,0xd5,0xcb,0xc9,0xcf,0xcd,0xc3,0xc1,0xc7,0xc5,
     0xfb,0xf9,0xff,0xfd,0xf3,0xf1,0xf7,0xf5,0xeb,0xe9,0xef,0xed,0xe3,0xe1,0xe7,0xe5
-};
 
+};
 __constant uchar mul3[256] = {
     0x00,0x03,0x06,0x05,0x0c,0x0f,0x0a,0x09,0x18,0x1b,0x1e,0x1d,0x14,0x17,0x12,0x11,
     0x30,0x33,0x36,0x35,0x3c,0x3f,0x3a,0x39,0x28,0x2b,0x2e,0x2d,0x24,0x27,0x22,0x21,
@@ -145,53 +144,6 @@ void shiftRows (__global uchar* state) {
     }
 }
 
-/**
- * Back shift each row of the state
- */
-void invShiftRows(__global uchar* state) {
-    __local uchar temp[MAX_WIDTH];
-    temp[0] = state[0];
-    temp[1] = state[13];
-    temp[2] = state[10];
-    temp[3] = state[7];
-
-    temp[4] = state[4];
-    temp[5] = state[1];
-    temp[6] = state[14];
-    temp[7] = state[11];
-
-    temp[8] = state[8];
-    temp[9] = state[5];
-    temp[10] = state[2];
-    temp[11] = state[15];
-
-    temp[12] = state[12];
-    temp[13] = state[9];
-    temp[14] = state[6];
-    temp[15] = state[3];
-
-    for (int i = 0; i < MAX_WIDTH; i++) {
-        state[i] = temp[i];
-    }
-}
-
-__global uchar xtime (__global uchar x) {
-  return ((x<<1) ^ (((x>>7) & 1) * 0x1b));
-}
-
-__global uchar multiply (__global uchar x, __global uchar y) {    
-   __local uchar c = 0;
-   __local uchar d = y;
-   for (int i = 0; i < MAX_WIDTH / 2; i++) {
-      if (x % 2 == 1) {
-        c ^= d;
-      }
-      x /= 2;
-      d = xtime(d);
-   }
-   return c;
-}
-
 void mixColumns (__global uchar* state) {
     __local uchar temp[MAX_WIDTH];
 
@@ -220,34 +172,6 @@ void mixColumns (__global uchar* state) {
     }
 }
 
-void invMixColumns (__global uchar* state) {
-    __local uchar temp[MAX_WIDTH];
-
-    temp[0] = multiply(state[0], 0x0e) ^ multiply(state[1], 0x0b) ^ multiply(state[2], 0x0d) ^ multiply(state[3], 0x09);
-    temp[1] = multiply(state[0], 0x09) ^ multiply(state[1], 0x0e) ^ multiply(state[2], 0x0b) ^ multiply(state[3], 0x0d);
-    temp[2] = multiply(state[0], 0x0d) ^ multiply(state[1], 0x09) ^ multiply(state[2], 0x0e) ^ multiply(state[3], 0x0b);
-    temp[3] = multiply(state[0], 0x0b) ^ multiply(state[1], 0x0d) ^ multiply(state[2], 0x09) ^ multiply(state[3], 0x0e);
-
-    temp[4] = multiply(state[4], 0x0e) ^ multiply(state[5], 0x0b) ^ multiply(state[6], 0x0d) ^ multiply(state[7], 0x09);
-    temp[5] = multiply(state[4], 0x09) ^ multiply(state[5], 0x0e) ^ multiply(state[6], 0x0b) ^ multiply(state[7], 0x0d);
-    temp[6] = multiply(state[4], 0x0d) ^ multiply(state[5], 0x09) ^ multiply(state[6], 0x0e) ^ multiply(state[7], 0x0b);
-    temp[7] = multiply(state[4], 0x0b) ^ multiply(state[5], 0x0d) ^ multiply(state[6], 0x09) ^ multiply(state[7], 0x0e);
-
-    temp[8] = multiply(state[8], 0x0e) ^ multiply(state[9], 0x0b) ^ multiply(state[10], 0x0d) ^ multiply(state[11], 0x09);
-    temp[9] = multiply(state[8], 0x09) ^ multiply(state[9], 0x0e) ^ multiply(state[10], 0x0b) ^ multiply(state[11], 0x0d);
-    temp[10] = multiply(state[8], 0x0d) ^ multiply(state[9], 0x09) ^ multiply(state[10], 0x0e) ^ multiply(state[11], 0x0b);
-    temp[11] = multiply(state[8], 0x0b) ^ multiply(state[9], 0x0d) ^ multiply(state[10], 0x09) ^ multiply(state[11], 0x0e);
-
-    temp[12] = multiply(state[12], 0x0e) ^ multiply(state[13], 0x0b) ^ multiply(state[14], 0x0d) ^ multiply(state[15], 0x09);
-    temp[13] = multiply(state[12], 0x09) ^ multiply(state[13], 0x0e) ^ multiply(state[14], 0x0b) ^ multiply(state[15], 0x0d);
-    temp[14] = multiply(state[12], 0x0d) ^ multiply(state[13], 0x09) ^ multiply(state[14], 0x0e) ^ multiply(state[15], 0x0b);
-    temp[15] = multiply(state[12], 0x0b) ^ multiply(state[13], 0x0d) ^ multiply(state[14], 0x09) ^ multiply(state[15], 0x0e);
-
-    for(int i = 0; i < MAX_WIDTH; i++){
-        state[i] = temp[i];
-    }
-}
-
 void addRoundKey (__global uchar* state, __local uchar* roundKey) {
     for (int i = 0; i < MAX_WIDTH; i++) {
         state[i] ^= roundKey[i];
@@ -259,7 +183,7 @@ void encryption (__global uchar* state, __global uchar* key) {
 
   keyExpansion(key, expendedKey);
   addRoundKey(state, expandedKey);
-  for(int i = 0; i < ROUND; i++){
+  for(int i = ROUND - 2; i >= 0; i--){
       subBytes(state);
       shiftRows(state);
       mixColumns(state);
@@ -270,29 +194,16 @@ void encryption (__global uchar* state, __global uchar* key) {
   addRoundKey(state, expandedKey + MAX_WIDTH * ROUND);
 }
 
-void decryption (__global uchar* state, __global uchar* key) {
-    // the inverse order of encryption
-    // the final round does not include the mixColumns transformation
-    __local uchar expendedKey[MAX_WIDTH * (ROUND + 1)];
-    keyExpansion(key, expandedKey);
-    addRoundKey(state, expandedKey + MAX_WIDTH * ROUND);
-    for (int i = ROUND - 2; i >= 0; i--) {
-        invShiftRows(state);
-        invSubBytes(state);
-        addRoundKey(state, expandedKey + (MAX_WIDTH * (i + 1)));
-        invMixColumns(state);
-    }
-    invShiftRows(state);
-    invSubBytes(state);
-    addRoundKey(state, expandedKey);
+
+
+
+
+__kernel void encrypt(__global uchar* roundKey, __global uchar* message)
+{
+  int id = get_global_id(0);
+  encryption(message + 16*id, roundKey);
 }
 
-__kernel void encrypt(__global uchar* message, __global uchar* roundKey) {
-  int id = get_global_id(0);
-  encryption(message + 16 * id, roundKey);
-}
 
-__kernel void decrypt(__global uchar* message, __global uchar* roundKey) {
-  int id = get_global_id(0);
-  encryption(message + 16 * id, roundKey);
-}
+
+
