@@ -333,6 +333,17 @@ void decryption (unsigned char* state, unsigned char* key) {
     addRoundKey(state, expandedKey);
 }
 
+void encrypt (int lines, unsigned char* state, unsigned char* key) {
+    for (int i = 0; i < lines; i++) {
+        encrption(state + i * MAX_WIDTH, key);
+    }
+}
+
+void decrypt (int lines, unsigned char* state, unsigned char* key) {
+    for (int i = 0; i < lines; i++) {
+        decrption(state + i * MAX_WIDTH, key);
+    }
+}
 
 int main (int argc, char *argv[]) {
     FILE *fp;
@@ -360,15 +371,13 @@ int main (int argc, char *argv[]) {
     unsigned char key[MAX_WIDTH] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16};
     switch(mode){
         case 0:
-            encryption(message, key);
+            encrypt(numberOfLines, message, key);
             printf("Encryption: \n");
-            for (int i = 0; i < MAX_WIDTH; i++) {
-                printf("%c", message[i]);
-            }
+            printf("%s\n", message);
             break;
         case 1:
+            decrypt(numberOfLines, message, key);
             printf("\nDecryption: \n");
-            decryption(message, key);
             printf("%s\n", message);
             break;
             
