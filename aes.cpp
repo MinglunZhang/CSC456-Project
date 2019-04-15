@@ -341,7 +341,7 @@ int main (int argc, char *argv[]) {
     int size;
     int num_bytes_read;
     unsigned char *message;
-    if(argc < 3)
+    if (argc != 4)
     {
         fprintf(stderr,"Usage: %s input_file number_of_lines mode\n",argv[0]);        
     }
