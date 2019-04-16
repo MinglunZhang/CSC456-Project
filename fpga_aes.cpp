@@ -4,7 +4,11 @@
 #else
 #include "CL/opencl.h"
 #include "AOCL_Utils.h"
+
+
 using namespace aocl_utils;
+
+#define MAX_WIDTH 16
 #endif
 #ifdef APPLE
 // OpenCL runtime configuration
@@ -50,8 +54,11 @@ void cleanup();
  * The fpga encryption function
  */
 int encryption_fpga (int num_of_lines, unsigned char *data, unsigned char *k) {
-    // assign global variables   
-    mode = "encrypt";
+    // assign global variables
+    mode = (char *)malloc(7 * sizeof(char));
+    std::string s = "encrypt";   
+    s.copy(mode, 7 * sizeof(char));
+    
     size = num_of_lines;
     key = k;
     memcpy(input, data, size * MAX_WIDTH * sizeof(unsigned char));
@@ -70,9 +77,12 @@ int encryption_fpga (int num_of_lines, unsigned char *data, unsigned char *k) {
 /**
  * The fpga decryption function
  */
-int decryption_fpga (int num_of_lines, unsigned char *data, unsigned char *key) {
+int decryption_fpga (int num_of_lines, unsigned char *data, unsigned char *k) {
     // assign global variables  
-    mode = "decrypt";
+    mode = (char *)malloc(7 * sizeof(char));
+    std::string s = "decrypt";   
+    s.copy(mode, 7 * sizeof(char));
+
     size = num_of_lines;
     key = k;
     memcpy(input, data, size * MAX_WIDTH * sizeof(unsigned char));
@@ -171,7 +181,7 @@ bool init_opencl() {
     fpga_a = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_MEM_BANK_1_ALTERA, size * MAX_WIDTH * sizeof(unsigned char), NULL, &status);
     checkError(status, "Failed to create buffer for input A");
 
-    fpga_b = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_BANK_1_ALTERA, MAX_WIDTH * sizeof(unsigned char), NULL, &status);
+    fpga_b = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_BANK_1_ALTERA, MAX_WIDTH * 11 * sizeof(unsigned char), NULL, &status);
     checkError(status, "Failed to create buffer for input B");
 
     // move stuff into OpenCL device
@@ -180,10 +190,10 @@ bool init_opencl() {
         status = clEnqueueWriteBuffer(queue[i], fpga_a, CL_FALSE, 0, size * MAX_WIDTH * sizeof(unsigned char), input, 0, NULL, NULL);
         checkError(status, "Failed to transfer input A");
 
-        status = clEnqueueWriteBuffer(queue[i], fpga_b, CL_FALSE, 0, MAX_WIDTH * sizeof(unsigned char), key, 0, NULL, NULL);
+        status = clEnqueueWriteBuffer(queue[i], fpga_b, CL_FALSE, 0, MAX_WIDTH * 11 * sizeof(unsigned char), key, 0, NULL, NULL);
         checkError(status, "Failed to transfer input B");
 
-        clFinish(queue);
+        clFinish(queue[i]);
 
         cl_event kernel_event;
         unsigned argi = 0;

@@ -191,7 +191,7 @@ unsigned char multiply (unsigned char x, unsigned char y) {
    unsigned char d = y;
    for (int i = 0; i < MAX_WIDTH / 2; i++) {
       if (x % 2 == 1) {
-      	c ^= d;
+        c ^= d;
       }
       x /= 2;
       d = xtime(d);

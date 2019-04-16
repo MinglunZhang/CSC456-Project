@@ -20,8 +20,6 @@ __constant uchar sbox[256] = {
   0x8c, 0xa1, 0x89, 0x0d, 0xbf, 0xe6, 0x42, 0x68, 0x41, 0x99, 0x2d, 0x0f, 0xb0, 0x54, 0xbb, 0x16 
   };
 
-__constant uchar Rcon[ROUND + 1] = {0x8d, 0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x1b, 0x36};
-
 __constant uchar rsbox[256] = {
     0x52, 0x09, 0x6a, 0xd5, 0x30, 0x36, 0xa5, 0x38, 0xbf, 0x40, 0xa3, 0x9e, 0x81, 0xf3, 0xd7, 0xfb,
     0x7c, 0xe3, 0x39, 0x82, 0x9b, 0x2f, 0xff, 0x87, 0x34, 0x8e, 0x43, 0x44, 0xc4, 0xde, 0xe9, 0xcb,
@@ -41,44 +39,6 @@ __constant uchar rsbox[256] = {
     0x17, 0x2b, 0x04, 0x7e, 0xba, 0x77, 0xd6, 0x26, 0xe1, 0x69, 0x14, 0x63, 0x55, 0x21, 0x0c, 0x7d 
 
 };
-
-void keyExpansionCore(__local uchar* in, uchar i){
-
-    //__local uint* q = (__local uint*) in;
-    //*q  = (*q >> 8) | ((*q & 0xff) << 24);
-
-    in[0] = sbox[in[0]];
-    in[1] = sbox[in[1]];
-    in[2] = sbox[in[2]];
-    in[3] = sbox[in[3]];
-
-    in[0] ^= Rcon[i];
-
-}
-
-void keyExpansion(__global uchar* inputKey, __local uchar* expansionKeys){
-    for(int i = 0; i < MAX_WIDTH; i++){
-        expansionKeys[i] = inputKey[i];
-    }
-    int byteG = MAX_WIDTH;
-    int rcon = 1;
-    __local uchar temp[4];
-    while(byteG < 176){
-        for (int i = 0; i < 4; i++) {
-            temp[i] = expansionKeys[i + byteG - 4];
-        }
-        if (byteG % MAX_WIDTH == 0) {
-            keyExpansionCore(temp, rcon);
-            rcon++;
-        }
-        for (uchar a = 0; a < 4; a++) {
-            expansionKeys[byteG] = expansionKeys[byteG - MAX_WIDTH] ^ temp[a];
-            byteG++;
-        }
-    }
-
-}
-
 /**
  * Using Substitution Box to find the substitution value
  */
@@ -101,62 +61,61 @@ void invSubBytes (__global uchar* state) {
  * Shift each row of the state
  */
 void shiftRows (__global uchar* state) {
-    __local uchar temp[MAX_WIDTH];
-    temp[0] = state[0];
-    temp[1] = state[5];
-    temp[2] = state[10];
-    temp[3] = state[15];
 
-    temp[4] = state[4];
-    temp[5] = state[9];
-    temp[6] = state[14];
-    temp[7] = state[3];
+    uchar temp;
+    temp = state[1];
+    state[1] = state[5];
+    state[5] = state[9];
+    state[9] = state[13];
+    state[13] = temp;
 
-    temp[8] = state[8];
-    temp[9] = state[13];
-    temp[10] = state[2];
-    temp[11] = state[7];
+    temp = state[2];
+    state[2] = state[10];
+    state[10] = temp;
 
-    temp[12] = state[12];
-    temp[13] = state[1];
-    temp[14] = state[6];
-    temp[15] = state[11];
+    temp = state[6];
+    state[6] = state[14];
+    state[14] = temp;
 
-    for (int i = 0; i < MAX_WIDTH; i++) {
-        state[i] = temp[i];
-    }
+    temp = state[3];
+    state[3] = state[15];
+    state[15] = state[11];
+    state[11] = state[7];
+    state[7] = temp;
+
+    
 }
 
 /**
  * Back shift each row of the state
  */
 void invShiftRows(__global uchar* state) {
-    __local uchar temp[MAX_WIDTH];
-    temp[0] = state[0];
-    temp[1] = state[13];
-    temp[2] = state[10];
-    temp[3] = state[7];
+    uchar temp;
+    temp = state[1];
+    state[1] = state[13];
+    state[13] = state[9];
+    state[9] = state[5];
+    state[5] = temp;
 
-    temp[4] = state[4];
-    temp[5] = state[1];
-    temp[6] = state[14];
-    temp[7] = state[11];
+    temp = state[2];
+    state[2] = state[10];
+    state[10] = temp;
 
-    temp[8] = state[8];
-    temp[9] = state[5];
-    temp[10] = state[2];
-    temp[11] = state[15];
+    temp = state[6];
+    state[6] = state[14];
+    state[14] = temp;
 
-    temp[12] = state[12];
-    temp[13] = state[9];
-    temp[14] = state[6];
-    temp[15] = state[3];
+    temp = state[3];
+    state[3] = state[7];
+    state[7] = state[11];
+    state[11] = state[15];
+    state[15] = temp;
 
-    for (int i = 0; i < MAX_WIDTH; i++) {
-        state[i] = temp[i];
-    }
+    
 }
-
+uchar xtime(uchar x){
+  return ((x<<1) ^ (((x>>7) & 1) * 0x1b));
+}
 
 uchar multiply (uchar x, uchar y) {    
    uchar c = 0;
@@ -166,104 +125,89 @@ uchar multiply (uchar x, uchar y) {
         c ^= d;
       }
       x /= 2;
-      d = ((x<<1) ^ (((x>>7) & 1) * 0x1b));
+      d = xtime(d);
    }
    return c;
 }
 
 void mixColumns (__global uchar* state) {
-    __local uchar temp[MAX_WIDTH];
+    uchar a, b, c, d, temp, foo;
+  for (int i = 0; i < 4; i++) {  
+    a = state[4 * i + 0];
+    b = state[4 * i + 1];
+    c = state[4 * i + 2];
+    d = state[4 * i + 3];
 
-    temp[0] = (unsigned char)(mul2[state[0]] ^ mul3[state[1]] ^ state[2] ^ state[3]);
-    temp[1] = (unsigned char)(state[0] ^ mul2[state[1]] ^ mul3[state[2]] ^ state[3]);
-    temp[2] = (unsigned char)(state[0] ^ state[1] ^ mul2[state[2]] ^ mul3[state[3]]);
-    temp[3] = (unsigned char)(mul3[state[0]] ^ state[1] ^ state[2] ^ mul2[state[3]]);
+    temp = a ^ b ^ c ^ d;
 
-    temp[4] = (unsigned char)(mul2[state[4]] ^ mul3[state[5]] ^ state[6] ^ state[7]);
-    temp[5] = (unsigned char)(state[4] ^ mul2[state[5]] ^ mul3[state[6]] ^ state[7]);
-    temp[6] = (unsigned char)(state[4] ^ state[5] ^ mul2[state[6]] ^ mul3[state[7]]);
-    temp[7] = (unsigned char)(mul3[state[4]] ^ state[5] ^ state[6] ^ mul2[state[7]]);
+    foo = a ^ b;
+    foo = xtime(foo);
+    state[4 * i + 0] ^= foo ^ temp;
 
-    temp[8] = (unsigned char)(mul2[state[8]] ^ mul3[state[9]] ^ state[10] ^ state[11]);
-    temp[9] = (unsigned char)(state[8] ^ mul2[state[9]] ^ mul3[state[10]] ^ state[11]);
-    temp[10] = (unsigned char)(state[8] ^ state[9] ^ mul2[state[10]] ^ mul3[state[11]]);
-    temp[11] = (unsigned char)(mul3[state[8]] ^ state[9] ^ state[10] ^ mul2[state[11]]);
+    foo = b ^ c;
+    foo = xtime(foo);
+    state[4 * i + 1] ^= foo ^ temp;
 
-    temp[12] = (unsigned char)(mul2[state[12]] ^ mul3[state[13]] ^ state[14] ^ state[15]);
-    temp[13] = (unsigned char)(state[12] ^ mul2[state[13]] ^ mul3[state[14]] ^ state[15]);
-    temp[14] = (unsigned char)(state[12] ^ state[13] ^ mul2[state[14]] ^ mul3[state[15]]);
-    temp[15] = (unsigned char)(mul3[state[12]] ^ state[13] ^ state[14] ^ mul2[state[15]]);
+    foo = c ^ d;
+    foo = xtime(foo);
+    state[4 * i + 2] ^= foo ^ temp;
 
-    for (int i = 0; i < MAX_WIDTH; i++) {
-        state[i] = temp[i];
-    }
+    foo = d ^ a;
+        foo = xtime(foo);
+
+    state[4 * i + 3] ^= foo ^ temp;
+  }
 }
 
 void invMixColumns (__global uchar* state) {
-    __local uchar temp[MAX_WIDTH];
+    uchar a, b, c, d;
+  for (int i = 0; i < 4; i++) {  
+    a = state[4 * i + 0];
+    b = state[4 * i + 1];
+    c = state[4 * i + 2];
+    d = state[4 * i + 3];
 
-    temp[0] = multiply(state[0], 0x0e) ^ multiply(state[1], 0x0b) ^ multiply(state[2], 0x0d) ^ multiply(state[3], 0x09);
-    temp[1] = multiply(state[0], 0x09) ^ multiply(state[1], 0x0e) ^ multiply(state[2], 0x0b) ^ multiply(state[3], 0x0d);
-    temp[2] = multiply(state[0], 0x0d) ^ multiply(state[1], 0x09) ^ multiply(state[2], 0x0e) ^ multiply(state[3], 0x0b);
-    temp[3] = multiply(state[0], 0x0b) ^ multiply(state[1], 0x0d) ^ multiply(state[2], 0x09) ^ multiply(state[3], 0x0e);
+    state[4 * i + 0] = multiply(a, 0x0e) ^ multiply(b, 0x0b) ^ multiply(c, 0x0d) ^ multiply(d, 0x09);
+    state[4 * i + 1] = multiply(a, 0x09) ^ multiply(b, 0x0e) ^ multiply(c, 0x0b) ^ multiply(d, 0x0d);
+    state[4 * i + 2] = multiply(a, 0x0d) ^ multiply(b, 0x09) ^ multiply(c, 0x0e) ^ multiply(d, 0x0b);
+    state[4 * i + 3] = multiply(a, 0x0b) ^ multiply(b, 0x0d) ^ multiply(c, 0x09) ^ multiply(d, 0x0e);
 
-    temp[4] = multiply(state[4], 0x0e) ^ multiply(state[5], 0x0b) ^ multiply(state[6], 0x0d) ^ multiply(state[7], 0x09);
-    temp[5] = multiply(state[4], 0x09) ^ multiply(state[5], 0x0e) ^ multiply(state[6], 0x0b) ^ multiply(state[7], 0x0d);
-    temp[6] = multiply(state[4], 0x0d) ^ multiply(state[5], 0x09) ^ multiply(state[6], 0x0e) ^ multiply(state[7], 0x0b);
-    temp[7] = multiply(state[4], 0x0b) ^ multiply(state[5], 0x0d) ^ multiply(state[6], 0x09) ^ multiply(state[7], 0x0e);
-
-    temp[8] = multiply(state[8], 0x0e) ^ multiply(state[9], 0x0b) ^ multiply(state[10], 0x0d) ^ multiply(state[11], 0x09);
-    temp[9] = multiply(state[8], 0x09) ^ multiply(state[9], 0x0e) ^ multiply(state[10], 0x0b) ^ multiply(state[11], 0x0d);
-    temp[10] = multiply(state[8], 0x0d) ^ multiply(state[9], 0x09) ^ multiply(state[10], 0x0e) ^ multiply(state[11], 0x0b);
-    temp[11] = multiply(state[8], 0x0b) ^ multiply(state[9], 0x0d) ^ multiply(state[10], 0x09) ^ multiply(state[11], 0x0e);
-
-    temp[12] = multiply(state[12], 0x0e) ^ multiply(state[13], 0x0b) ^ multiply(state[14], 0x0d) ^ multiply(state[15], 0x09);
-    temp[13] = multiply(state[12], 0x09) ^ multiply(state[13], 0x0e) ^ multiply(state[14], 0x0b) ^ multiply(state[15], 0x0d);
-    temp[14] = multiply(state[12], 0x0d) ^ multiply(state[13], 0x09) ^ multiply(state[14], 0x0e) ^ multiply(state[15], 0x0b);
-    temp[15] = multiply(state[12], 0x0b) ^ multiply(state[13], 0x0d) ^ multiply(state[14], 0x09) ^ multiply(state[15], 0x0e);
-
-    for(int i = 0; i < MAX_WIDTH; i++){
-        state[i] = temp[i];
-    }
+  }
 }
 
-void addRoundKey (__global uchar* state, __local uchar* roundKey) {
+void addRoundKey (__global uchar* state, __global uchar* roundKey) {
     for (int i = 0; i < MAX_WIDTH; i++) {
         state[i] ^= roundKey[i];
     }
 }
 
 void encryption (__global uchar* state, __global uchar* key) {
-  __local uchar expandedKey[MAX_WIDTH * (ROUND + 1)];
-
-  keyExpansion(key, expandedKey);
-  addRoundKey(state, expandedKey);
+  
+  addRoundKey(state, key);
   for(int i = 0; i < ROUND; i++){
       subBytes(state);
       shiftRows(state);
       mixColumns(state);
-      addRoundKey(state, expandedKey + (MAX_WIDTH * (i + 1)));
+      addRoundKey(state, key + (MAX_WIDTH * (i + 1)));
   }
   subBytes(state);
   shiftRows(state); 
-  addRoundKey(state, expandedKey + MAX_WIDTH * ROUND);
+  addRoundKey(state, key + MAX_WIDTH * ROUND);
 }
 
 void decryption (__global uchar* state, __global uchar* key) {
     // the inverse order of encryption
     // the final round does not include the mixColumns transformation
-    __local uchar expandedKey[MAX_WIDTH * (ROUND + 1)];
-    keyExpansion(key, expandedKey);
-    addRoundKey(state, expandedKey + MAX_WIDTH * ROUND);
+    addRoundKey(state, key + MAX_WIDTH * ROUND);
     for (int i = ROUND - 2; i >= 0; i--) {
         invShiftRows(state);
         invSubBytes(state);
-        addRoundKey(state, expandedKey + (MAX_WIDTH * (i + 1)));
+        addRoundKey(state, key + (MAX_WIDTH * (i + 1)));
         invMixColumns(state);
     }
     invShiftRows(state);
     invSubBytes(state);
-    addRoundKey(state, expandedKey);
+    addRoundKey(state, key);
 }
 
 __kernel void encrypt(__global uchar* restrict message, __global uchar* restrict roundKey) {
