@@ -333,13 +333,13 @@ int main (int argc, char *argv[]) {
             
         case 2:
             printf("FPGA Encryption: \n");
-            encryption_fpga(numberOfLines, message, key);
+            encryption_fpga(numberOfLines, message, expandedKey);
             for (int i = 0; i < MAX_WIDTH; i++) {
                 printf("%02x ", message[i]);
             }
             break;
         default:
-            decryption_fpga(numberOfLines, message, key);
+            decryption_fpga(numberOfLines, message, expandedKey);
             printf("\nFPGA Decryption: \n");
             break;
     }
